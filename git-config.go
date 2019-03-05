@@ -1,11 +1,16 @@
 package gitconfig
 
 import (
+	"fmt"
+	"io/ioutil"
+	"path"
 	"strconv"
 	"strings"
 
 	"github.com/jiangxin/gitconfig/goconfig"
 )
+
+const maxIncludeDepth = 10
 
 // GitConfig maps section to key-value pairs
 type GitConfig map[string]GitConfigKeyValues
@@ -142,11 +147,70 @@ func toSectionKey(name string) (string, string) {
 }
 
 // Parse takes given bytes as configuration file (according to gitconfig syntax)
-func Parse(bytes []byte) (GitConfig, uint, error) {
-	var gitConfig = NewGitConfig()
-	cfg, line, err := goconfig.Parse(bytes)
-	for key, val := range cfg {
-		gitConfig.Add(key, val...)
+func Parse(bytes []byte, filename string) (GitConfig, uint, error) {
+	var (
+		gitCfg = NewGitConfig()
+		line   uint
+		err    error
+		depth  uint
+	)
+
+	for {
+		var (
+			cfg         = NewGitConfig()
+			file        string
+			gocfg       map[string][]string
+			includePath string
+		)
+
+		gocfg, line, err = goconfig.Parse(bytes)
+		for key, val := range gocfg {
+			cfg.Add(key, val...)
+		}
+		gitCfg = gitCfg.Merge(cfg)
+		includePath = cfg.Get("include.path")
+		if includePath == "" {
+			break
+		}
+		file, err = AbsJoin(path.Dir(filename), includePath)
+		if err != nil {
+			break
+		}
+		depth++
+		// Check circular includes
+		if depth >= maxIncludeDepth {
+			err = fmt.Errorf("exceeded maximum include depth (%d) while including\n"+
+				"\t%s\n"+
+				"from"+
+				"\t%s\n"+
+				"This might be due to circular includes\n",
+				maxIncludeDepth,
+				filename,
+				file)
+			break
+		}
+		filename = file
+		bytes, err = ioutil.ReadFile(file)
+		if err != nil {
+			break
+		}
 	}
-	return gitConfig, line, err
+	return gitCfg, line, err
+}
+
+// Merge will merge another GitConfig, and new value(s) of the same key will
+// append to the end of value list, and new value has higher priority.
+func (v GitConfig) Merge(c GitConfig) GitConfig {
+	for sec, keys := range c {
+		if _, ok := v[sec]; !ok {
+			v[sec] = make(GitConfigKeyValues)
+		}
+		for key, values := range keys {
+			if v[sec][key] == nil {
+				v[sec][key] = []string{}
+			}
+			v[sec][key] = append(v[sec][key], values...)
+		}
+	}
+	return v
 }
