@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -56,6 +57,17 @@ type GitConfigValue struct {
 	value string
 }
 
+// Keys returns sorted kesy in one section
+func (v GitConfigKeyValues) Keys() []string {
+	keys := reflect.ValueOf(v).MapKeys()
+	strkeys := make([]string, len(keys))
+	for i := 0; i < len(keys); i++ {
+		strkeys[i] = keys[i].String()
+	}
+	sort.Strings(strkeys)
+	return strkeys
+}
+
 // Set is used to set value
 func (v *GitConfigValue) Set(value string) {
 	v.value = value
@@ -75,6 +87,17 @@ func (v GitConfigValue) Scope() string {
 func NewGitConfig() GitConfig {
 	c := make(GitConfig)
 	return c
+}
+
+// Sections returns sorted sections
+func (v GitConfig) Sections() []string {
+	keys := reflect.ValueOf(v).MapKeys()
+	strkeys := make([]string, len(keys))
+	for i := 0; i < len(keys); i++ {
+		strkeys[i] = keys[i].String()
+	}
+	sort.Strings(strkeys)
+	return strkeys
 }
 
 // Keys returns all config variable keys (in lower case)
@@ -106,7 +129,11 @@ func (v GitConfig) _add(section, key string, value ...string) {
 		v[section][key] = []GitConfigValue{}
 	}
 	for _, val := range value {
-		v[section][key] = append(v[section][key], GitConfigValue{value: val})
+		v[section][key] = append(v[section][key],
+			GitConfigValue{
+				scope: ScopeSelf,
+				value: val,
+			})
 	}
 }
 
@@ -237,7 +264,11 @@ func Parse(bytes []byte, filename string) (GitConfig, uint, error) {
 		for key, val := range gocfg {
 			cfg.Add(key, val...)
 		}
-		gitCfg = gitCfg.Merge(cfg, ScopeInclude)
+		if depth == 0 {
+			gitCfg = cfg
+		} else {
+			gitCfg = gitCfg.Merge(cfg, ScopeInclude)
+		}
 		includePath = cfg.Get("include.path")
 		if includePath == "" {
 			break
@@ -290,4 +321,80 @@ func (v GitConfig) Merge(c GitConfig, scope Scope) GitConfig {
 		}
 	}
 	return v
+}
+
+// String returns content of GitConfig ready to save config file
+func (v GitConfig) String() string {
+	return v.StringOfScope(ScopeSelf)
+}
+
+// StringOfScope returns contents with matching scope ready to save config file
+func (v GitConfig) StringOfScope(scope Scope) string {
+	lines := []string{}
+	showInc := false
+	if (scope & ScopeInclude) != 0 {
+		showInc = true
+		scope &= (^ScopeInclude)
+	}
+
+	for _, s := range v.Sections() {
+		secs := strings.SplitN(s, ".", 2)
+		sec := s
+		if len(secs) == 2 {
+			sec = fmt.Sprintf("%s \"%s\"", secs[0], secs[1])
+		}
+		once := true
+		for _, k := range v[s].Keys() {
+			for _, value := range v[s][k] {
+				if !showInc && ((value.scope & ScopeInclude) != 0) {
+					continue
+				}
+				if (value.scope & (^ScopeInclude) & scope) == 0 {
+					continue
+				}
+
+				if once {
+					once = false
+					lines = append(lines, "["+sec+"]")
+				}
+				line := "\t" + k + " = "
+				quote := false
+				if isspace(value.value[0]) || isspace(value.value[len(value.value)-1]) {
+					quote = true
+				}
+				if quote {
+					line += "\""
+				}
+				for _, c := range value.value {
+					switch c {
+					case '\n':
+						line += "\\n"
+						continue
+					case '\t':
+						line += "\\t"
+						continue
+					case '\b':
+						line += "\\b"
+						continue
+					case '\\':
+						line += "\\"
+					case '"':
+						line += "\\"
+					}
+					line += string(c)
+				}
+				if quote {
+					line += "\""
+				}
+
+				lines = append(lines, line)
+			}
+		}
+
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func isspace(c byte) bool {
+	return c == '\t' || c == ' ' || c == '\n' || c == '\v' || c == '\f' || c == '\r'
 }
