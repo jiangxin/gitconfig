@@ -3,6 +3,7 @@ package gitconfig
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"reflect"
 	"sort"
@@ -468,4 +469,23 @@ func (v GitConfig) StringOfScope(scope Scope) string {
 
 func isspace(c byte) bool {
 	return c == '\t' || c == ' ' || c == '\n' || c == '\v' || c == '\f' || c == '\r'
+}
+
+// Save will save git config to file
+func (v GitConfig) Save(file string) error {
+	lockFile := file + ".lock"
+
+	err := ioutil.WriteFile(lockFile, []byte(v.String()), 0644)
+	defer os.Remove(lockFile)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = LoadFile(lockFile, false)
+	if err != nil {
+		return fmt.Errorf("fail to save '%s': %s", file, err)
+	}
+
+	return os.Rename(lockFile, file)
 }
