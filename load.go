@@ -59,7 +59,7 @@ func loadOne(name string, searching bool) (GitConfig, error) {
 			return nil, nil
 		}
 
-		name, err = findGitConfig(name)
+		name, err = FindGitConfig(name)
 		if err != nil || name == "" {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ func LoadDir(name string, inherit bool) (GitConfig, error) {
 
 // SystemConfig returns system git config, reload if necessary
 func SystemConfig() (GitConfig, error) {
-	file := systemConfigFile()
+	file := SystemConfigFile()
 	if file == "" {
 		return nil, nil
 	}
@@ -154,7 +154,7 @@ func SystemConfig() (GitConfig, error) {
 
 // GlobalConfig returns global user config, reload if necessary
 func GlobalConfig() (GitConfig, error) {
-	file, err := globalConfigFile()
+	file, err := GlobalConfigFile()
 	if err != nil {
 		return nil, err
 	}
