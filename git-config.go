@@ -473,6 +473,10 @@ func isspace(c byte) bool {
 
 // Save will save git config to file
 func (v GitConfig) Save(file string) error {
+	if file == "" {
+		return fmt.Errorf("cannot save config, unknown filename")
+	}
+
 	lockFile := file + ".lock"
 
 	err := ioutil.WriteFile(lockFile, []byte(v.String()), 0644)
