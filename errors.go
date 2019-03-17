@@ -10,3 +10,6 @@ var ErrMissingStartQuote = errors.New("missing start quote")
 
 // ErrNotBoolValue indicates fail to convert config variable to bool
 var ErrNotBoolValue = errors.New("not a bool value")
+
+// ErrNotInGitDir indicates not in a git dir
+var ErrNotInGitDir = errors.New("not in a git dir")

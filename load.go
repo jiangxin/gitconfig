@@ -60,7 +60,10 @@ func loadOne(name string, searching bool) (GitConfig, error) {
 		}
 
 		name, err = FindGitConfig(name)
-		if err != nil || name == "" {
+		if err != nil {
+			if err == ErrNotInGitDir {
+				return nil, nil
+			}
 			return nil, err
 		}
 	}
