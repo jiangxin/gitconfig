@@ -175,10 +175,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if configFile != "" {
-		cfg, err = gitconfig.LoadFile(configFile, optInclude)
+	if optInclude {
+		cfg, err = gitconfig.LoadAll(configFile)
 	} else {
-		cfg, err = gitconfig.LoadDir("", optInclude)
+		cfg, err = gitconfig.Load(configFile)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
