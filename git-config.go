@@ -14,18 +14,18 @@ import (
 
 const maxIncludeDepth = 10
 
-// Scope is used to mark where config variable comes from
-type Scope uint16
+// scope is used to mark where config variable comes from
+type scope uint16
 
 // Define scopes for config variables
 const (
-	ScopeInclude Scope = 1 << iota
+	ScopeInclude scope = 1 << iota
 	ScopeSystem
 	ScopeGlobal
 	ScopeSelf
 
-	ScopeAll  Scope = 0xFFFF
-	ScopeMask Scope = ^ScopeInclude
+	ScopeAll  scope = 0xFFFF
+	ScopeMask scope = ^ScopeInclude
 )
 
 func toString(v interface{}) string {
@@ -68,7 +68,7 @@ func toString(v interface{}) string {
 }
 
 // String show user friendly display of scope
-func (v *Scope) String() string {
+func (v *scope) String() string {
 	inc := ""
 	if (*v & ScopeInclude) == ScopeInclude {
 		inc = "-inc"
@@ -85,19 +85,19 @@ func (v *Scope) String() string {
 }
 
 // GitConfig maps section to key-value pairs
-type GitConfig map[string]GitConfigKeyValues
+type GitConfig map[string]gitConfigKeyValues
 
-// GitConfigKeyValues maps key to values
-type GitConfigKeyValues map[string][]GitConfigValue
+// gitConfigKeyValues maps key to values
+type gitConfigKeyValues map[string][]gitConfigValue
 
-// GitConfigValue holds value and its scope
-type GitConfigValue struct {
-	scope Scope
+// gitConfigValue holds value and its scope
+type gitConfigValue struct {
+	scope scope
 	value string
 }
 
 // Keys returns sorted keys in one section
-func (v GitConfigKeyValues) Keys() []string {
+func (v gitConfigKeyValues) Keys() []string {
 	keys := []string{}
 	for k := range v {
 		keys = append(keys, k)
@@ -107,7 +107,7 @@ func (v GitConfigKeyValues) Keys() []string {
 }
 
 // Set is used to set value
-func (v *GitConfigValue) Set(value interface{}) {
+func (v *gitConfigValue) Set(value interface{}) {
 	s := toString(value)
 	if s == "" {
 	} else {
@@ -116,12 +116,12 @@ func (v *GitConfigValue) Set(value interface{}) {
 }
 
 // Value is used to show value
-func (v GitConfigValue) Value() string {
+func (v gitConfigValue) Value() string {
 	return v.value
 }
 
 // Scope is used to show user friendly scope
-func (v GitConfigValue) Scope() string {
+func (v gitConfigValue) Scope() string {
 	return v.scope.String()
 }
 
@@ -178,7 +178,7 @@ func (v GitConfig) Set(key string, value interface{}) {
 
 	if !found {
 		keys[k] = append(keys[k],
-			GitConfigValue{
+			gitConfigValue{
 				scope: ScopeSelf,
 				value: toString(value),
 			})
@@ -226,15 +226,15 @@ func (v GitConfig) Add(key string, value ...interface{}) {
 func (v GitConfig) _add(section, key string, value ...interface{}) {
 	// section, and key are always in lower case
 	if _, ok := v[section]; !ok {
-		v[section] = make(GitConfigKeyValues)
+		v[section] = make(gitConfigKeyValues)
 	}
 
 	if _, ok := v[section][key]; !ok {
-		v[section][key] = []GitConfigValue{}
+		v[section][key] = []gitConfigValue{}
 	}
 	for _, val := range value {
 		v[section][key] = append(v[section][key],
-			GitConfigValue{
+			gitConfigValue{
 				scope: ScopeSelf,
 				value: toString(val),
 			})
@@ -347,8 +347,8 @@ func (v GitConfig) GetAll(key string) []string {
 	return nil
 }
 
-// GetRaw gets all values of a key
-func (v GitConfig) GetRaw(key string) []GitConfigValue {
+// getRaw gets all values of a key
+func (v GitConfig) getRaw(key string) []gitConfigValue {
 	section, key := toSectionKey(key)
 
 	if v[section] != nil && v[section][key] != nil {
@@ -409,13 +409,13 @@ func Parse(bytes []byte, filename string) (GitConfig, uint, error) {
 		if depth == 0 {
 			gitCfg = cfg
 		} else {
-			gitCfg = gitCfg.Merge(cfg, ScopeInclude)
+			gitCfg = gitCfg.merge(cfg, ScopeInclude)
 		}
 		includePath = cfg.Get("include.path")
 		if includePath == "" {
 			break
 		}
-		file, err = AbsJoin(path.Dir(filename), includePath)
+		file, err = absJoin(path.Dir(filename), includePath)
 		if err != nil {
 			break
 		}
@@ -441,20 +441,20 @@ func Parse(bytes []byte, filename string) (GitConfig, uint, error) {
 	return gitCfg, line, err
 }
 
-// Merge will merge another GitConfig, and new value(s) of the same key will
+// merge will merge another GitConfig, and new value(s) of the same key will
 // append to the end of value list, and new value has higher priority.
-func (v GitConfig) Merge(c GitConfig, scope Scope) GitConfig {
+func (v GitConfig) merge(c GitConfig, scope scope) GitConfig {
 	for sec, keys := range c {
 		if _, ok := v[sec]; !ok {
-			v[sec] = make(GitConfigKeyValues)
+			v[sec] = make(gitConfigKeyValues)
 		}
 		for key, values := range keys {
 			if v[sec][key] == nil {
-				v[sec][key] = []GitConfigValue{}
+				v[sec][key] = []gitConfigValue{}
 			}
 			for _, value := range values {
 				v[sec][key] = append(v[sec][key],
-					GitConfigValue{
+					gitConfigValue{
 						scope: (value.scope & ^ScopeMask) | scope,
 						value: value.Value(),
 					})
@@ -467,11 +467,11 @@ func (v GitConfig) Merge(c GitConfig, scope Scope) GitConfig {
 
 // String returns content of GitConfig ready to save config file
 func (v GitConfig) String() string {
-	return v.StringOfScope(ScopeSelf)
+	return v.stringOfScope(ScopeSelf)
 }
 
 // StringOfScope returns contents with matching scope ready to save config file
-func (v GitConfig) StringOfScope(scope Scope) string {
+func (v GitConfig) stringOfScope(scope scope) string {
 	lines := []string{}
 	showInc := false
 	if (scope & ScopeInclude) != 0 {
