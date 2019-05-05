@@ -419,7 +419,7 @@ func Parse(bytes []byte, filename string) (GitConfig, uint, error) {
 		if depth == 0 {
 			gitCfg = cfg
 		} else {
-			gitCfg = gitCfg.merge(cfg, ScopeInclude)
+			gitCfg = gitCfg.Merge(cfg, ScopeInclude)
 		}
 		includePath = cfg.Get("include.path")
 		if includePath == "" {
@@ -451,9 +451,9 @@ func Parse(bytes []byte, filename string) (GitConfig, uint, error) {
 	return gitCfg, line, err
 }
 
-// merge will merge another GitConfig, and new value(s) of the same key will
+// Merge will merge another GitConfig, and new value(s) of the same key will
 // append to the end of value list, and new value has higher priority.
-func (v GitConfig) merge(c GitConfig, scope scope) GitConfig {
+func (v GitConfig) Merge(c GitConfig, scope scope) GitConfig {
 	for sec, keys := range c {
 		if _, ok := v[sec]; !ok {
 			v[sec] = make(gitConfigKeyValues)
