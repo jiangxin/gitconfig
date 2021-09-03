@@ -1,3 +1,5 @@
+github.com/Jiu2015/gotestspace v0.0.0-20210817111936-3c309895d86e h1:KkPqzbv7s0IkqWHcnKw/KST9ibGV+cBr7gZ3L95FXw8=
+github.com/Jiu2015/gotestspace v0.0.0-20210817111936-3c309895d86e/go.mod h1:gZA07G1qXmoB2hethQlqKwWaeJ6gjtKVsmkZLlKLCgI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

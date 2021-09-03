@@ -5,6 +5,31 @@ import (
 	"os"
 )
 
+// loadConfigFile loads specific git config file
+func loadConfigFile(name string) (GitConfig, error) {
+	c, ok := configCaches.get(name)
+	if ok {
+		return c.config, nil
+	}
+
+	// cache will be updated using this time
+	fi, _ := os.Stat(name)
+
+	buf, err := ioutil.ReadFile(name)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, _, err := Parse(buf, name)
+	if err != nil {
+		return cfg, err
+	}
+
+	// update cache
+	configCaches.set(name, cfg, fi.Size(), fi.ModTime())
+	return cfg, nil
+}
+
 // Load only loads one file or config of current repository
 func Load(name string) (GitConfig, error) {
 	var (
@@ -39,27 +64,7 @@ func Load(name string) (GitConfig, error) {
 		}
 	}
 
-	c, ok := configCaches.get(name)
-	if ok {
-		return c.config, nil
-	}
-
-	// cache will be updated using this time
-	fi, _ = os.Stat(name)
-
-	buf, err := ioutil.ReadFile(name)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg, _, err := Parse(buf, name)
-	if err != nil {
-		return cfg, err
-	}
-
-	// update cache
-	configCaches.set(name, cfg, fi.Size(), fi.ModTime())
-	return cfg, nil
+	return loadConfigFile(name)
 }
 
 // LoadAll will load additional global and system config files

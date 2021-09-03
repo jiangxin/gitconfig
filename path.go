@@ -109,21 +109,45 @@ func absJoin(dir, name string) (string, error) {
 	return absPath(filepath.Join(dir, name))
 }
 
-// isGitDir test whether dir is a valid git dir
-func isGitDir(dir string) bool {
-	if !IsFile(filepath.Join(dir, "HEAD")) {
-		return false
-	}
+func getWorkTree(gitDir string) (string, error) {
+	var err error
 
-	commonDir := dir
-	if IsFile(filepath.Join(dir, "commondir")) {
-		f, err := os.Open(filepath.Join(dir, "commondir"))
+	if !filepath.IsAbs(gitDir) {
+		gitDir, err = filepath.Abs(gitDir)
+		if err != nil {
+			return "", err
+		}
+	}
+	// A git-worktree gitdir?
+	fn := filepath.Join(gitDir, "gitdir")
+	f, err := os.Open(fn)
+	if err == nil {
+		s := bufio.NewScanner(f)
+		if s.Scan() {
+			if !filepath.IsAbs(s.Text()) {
+				gitDir = filepath.Join(gitDir, s.Text())
+			} else {
+				gitDir = s.Text()
+			}
+		}
+		f.Close()
+	}
+	if filepath.Base(gitDir) != ".git" {
+		return "", fmt.Errorf("repository name is not '.git', a bare repository?")
+	}
+	return filepath.Dir(gitDir), nil
+}
+
+func getGitCommonDir(gitDir string) (string, error) {
+	commonDir := gitDir
+	if IsFile(filepath.Join(gitDir, "commondir")) {
+		f, err := os.Open(filepath.Join(gitDir, "commondir"))
 		if err == nil {
 			s := bufio.NewScanner(f)
 			if s.Scan() {
 				commonDir = s.Text()
 				if !filepath.IsAbs(commonDir) {
-					commonDir = filepath.Join(dir, commonDir)
+					commonDir = filepath.Join(gitDir, commonDir)
 				}
 			}
 			f.Close()
@@ -133,9 +157,19 @@ func isGitDir(dir string) bool {
 	if IsFile(filepath.Join(commonDir, "config")) &&
 		IsDir(filepath.Join(commonDir, "refs")) &&
 		IsDir(filepath.Join(commonDir, "objects")) {
-		return true
+		return commonDir, nil
 	}
-	return false
+	return "", fmt.Errorf("'%s' is not a valid gitdir", commonDir)
+}
+
+// isGitDir test whether dir is a valid git dir
+func isGitDir(dir string) bool {
+	if !IsFile(filepath.Join(dir, "HEAD")) {
+		return false
+	}
+
+	_, err := getGitCommonDir(dir)
+	return err == nil
 }
 
 // findGitDir searches git dir
@@ -198,11 +232,15 @@ func findGitDir(dir string) (string, error) {
 
 // FindGitConfig returns local git config file
 func FindGitConfig(dir string) (string, error) {
-	dir, err := findGitDir(dir)
-	if err == nil {
-		return filepath.Join(dir, "config"), nil
+	var err error
+
+	if dir, err = findGitDir(dir); err != nil {
+		return "", err
 	}
-	return "", err
+	if dir, err = getGitCommonDir(dir); err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "config"), nil
 }
 
 // SystemConfigFile returns system git config file
