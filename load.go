@@ -7,9 +7,8 @@ import (
 
 // loadConfigFile loads specific git config file
 func loadConfigFile(name string) (GitConfig, error) {
-	c, ok := configCaches.get(name)
-	if ok {
-		return c.config, nil
+	if cfg, ok := CacheGet(name); ok {
+		return cfg, nil
 	}
 
 	// cache will be updated using this time
@@ -26,7 +25,7 @@ func loadConfigFile(name string) (GitConfig, error) {
 	}
 
 	// update cache
-	configCaches.set(name, cfg, fi.Size(), fi.ModTime())
+	CacheSet(name, cfg, fi.Size(), fi.ModTime())
 	return cfg, nil
 }
 

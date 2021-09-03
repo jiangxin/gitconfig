@@ -2,25 +2,20 @@ package gitconfig
 
 import (
 	"os"
-	"sync"
 	"time"
+
+	"github.com/golang/groupcache/lru"
 )
 
-type cache struct {
-	caches map[string]*cacheItem
-	mu     sync.RWMutex
-}
+var cache *lru.Cache
 
+// cacheItem holds cache for git config.
 type cacheItem struct {
 	config   GitConfig
 	filename string
 	time     time.Time
 	size     int64
 }
-
-var (
-	configCaches = cache{caches: make(map[string]*cacheItem)}
-)
 
 func (v *cacheItem) uptodate() bool {
 	fi, err := os.Stat(v.filename)
@@ -30,36 +25,36 @@ func (v *cacheItem) uptodate() bool {
 	return false
 }
 
-// set will cache cache entry
-func (v *cache) set(key string, cfg GitConfig, size int64, modTime time.Time) {
-	v.mu.Lock()
-	v.caches[key] = &cacheItem{
+// CacheSet will set cache entry
+func CacheSet(key string, cfg GitConfig, size int64, modTime time.Time) {
+	if cache == nil {
+		return
+	}
+	cache.Add(key, &cacheItem{
 		config:   cfg,
 		filename: key,
 		time:     modTime,
 		size:     size,
-	}
-	v.mu.Unlock()
+	})
 }
 
-// get returns cache entry if uptodate
-func (v *cache) get(key string) (*cacheItem, bool) {
-	v.mu.RLock()
-	item, ok := v.caches[key]
-	v.mu.RUnlock()
-
+// CacheGet returns git config if config file is up-to-date
+func CacheGet(key string) (GitConfig, bool) {
+	value, ok := cache.Get(key)
+	if !ok {
+		return nil, false
+	}
+	item, ok := value.(*cacheItem)
 	if !ok {
 		return nil, false
 	}
 	if !item.uptodate() {
-		v.expire(key)
+		cache.Remove(key)
 		return nil, false
 	}
-	return item, ok
+	return item.config, true
 }
 
-func (v *cache) expire(key string) {
-	v.mu.Lock()
-	delete(v.caches, key)
-	v.mu.Unlock()
+func init() {
+	cache = lru.New(128)
 }
