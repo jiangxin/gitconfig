@@ -18,10 +18,12 @@ func TestDanyel(t *testing.T) {
 	config, lineno, err := Parse(bytes)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 10, int(lineno))
-	assert.Equal(t, "Danyel Bayraktar", config["user.name"])
-	assert.Equal(t, "cydrop@gmail.com", config["user.email"])
-	assert.Equal(t, "subl -w", config["core.editor"])
-	assert.Equal(t, `!git config --get-regexp 'alias.*' | colrm 1 6 | sed 's/[ ]/ = /' | sort`, config["alias.aliases"])
+	assert.Equal(t, "Danyel Bayraktar", config["user.name"][0])
+	assert.Equal(t, "cydrop@gmail.com", config["user.email"][0])
+	assert.Equal(t, "subl -w", config["core.editor"][0])
+	assert.Equal(t,
+		`!git config --get-regexp 'alias.*' | colrm 1 6 | sed 's/[ ]/ = /' | sort`,
+		config["alias.aliases"][0])
 }
 
 func TestInvalidKey(t *testing.T) {
@@ -29,7 +31,7 @@ func TestInvalidKey(t *testing.T) {
 	config, lineno, err := Parse([]byte(invalidConfig))
 	assert.Equal(t, ErrInvalidKeyChar, err)
 	assert.Equal(t, 1, int(lineno))
-	assert.Equal(t, map[string]string{}, config)
+	assert.Equal(t, map[string][]string{}, config)
 }
 
 func TestNoNewLine(t *testing.T) {
@@ -37,7 +39,7 @@ func TestNoNewLine(t *testing.T) {
 	config, lineno, err := Parse([]byte(validConfig))
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, int(lineno))
-	assert.Equal(t, map[string]string{"user.name": "Danyel"}, config)
+	assert.Equal(t, map[string][]string{"user.name": {"Danyel"}}, config)
 }
 
 func TestExtended(t *testing.T) {
@@ -45,7 +47,7 @@ func TestExtended(t *testing.T) {
 	config, lineno, err := Parse([]byte(validConfig))
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 1, int(lineno))
-	assert.Equal(t, map[string]string{`http.https://my-website.com.sslverify`: "false"}, config)
+	assert.Equal(t, map[string][]string{`http.https://my-website.com.sslverify`: {"false"}}, config)
 }
 
 func ExampleParse() {
@@ -61,8 +63,8 @@ func ExampleParse() {
 	}
 	fmt.Println()
 	fmt.Println(lineno)
-	fmt.Println(config["user.name"])
-	fmt.Println(config["user.email"])
+	fmt.Println(config["user.name"][0])
+	fmt.Println(config["user.email"][0])
 	// Output:
 	// 10
 	// Danyel Bayraktar
