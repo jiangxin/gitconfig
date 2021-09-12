@@ -39,7 +39,7 @@ func TestLoadFileNotExist(t *testing.T) {
 	defer os.Unsetenv(gitSystemConfigEnv)
 
 	missing := filepath.Join(tmpdir, "missing")
-	cfg, err := Load(missing)
+	cfg, err := LoadFile(missing)
 	assert.Equal(ErrNotExist, err)
 	assert.Nil(cfg)
 }
@@ -70,8 +70,8 @@ func TestLoadNotGitdir(t *testing.T) {
 	os.Setenv(gitSystemConfigEnv, sysConfigFile)
 	defer os.Unsetenv(gitSystemConfigEnv)
 
-	cfg, err := Load(tmpdir)
-	assert.Equal(nil, err)
+	cfg, err := LoadDir(tmpdir)
+	assert.Equal(ErrNotExist, err)
 	assert.Nil(cfg)
 }
 
@@ -102,9 +102,9 @@ func TestLoadAllFileNotExist(t *testing.T) {
 	defer os.Unsetenv(gitSystemConfigEnv)
 
 	missing := filepath.Join(tmpdir, "missing")
-	cfg, err := LoadAll(missing)
-	assert.Equal(ErrNotExist, err)
-	assert.Nil(cfg)
+	cfg, err := LoadFileWithDefault(missing)
+	assert.Nil(err)
+	assert.NotNil(cfg)
 }
 
 func TestLoadAllNotGitdir(t *testing.T) {
@@ -133,7 +133,7 @@ func TestLoadAllNotGitdir(t *testing.T) {
 	os.Setenv(gitSystemConfigEnv, sysConfigFile)
 	defer os.Unsetenv(gitSystemConfigEnv)
 
-	cfg, err := LoadAll(tmpdir)
+	cfg, err := LoadDirWithDefault(tmpdir)
 	assert.Equal(nil, err)
 	assert.Equal(GitConfig{}, cfg)
 }
@@ -366,7 +366,7 @@ func TestRepoConfig(t *testing.T) {
 	assert.Nil(cmd.Run())
 
 	// load config of bare.git
-	cfg, err := Load(gitdir)
+	cfg, err := LoadDir(gitdir)
 	assert.Nil(err)
 	assert.Equal("has bar", cfg.Get("test.bar"))
 	assert.Equal([]string{sharedCfg}, cfg.GetAll("include.path"))
@@ -393,7 +393,7 @@ func TestCircularInclude(t *testing.T) {
 	cmd = exec.Command("git", "config", "-f", sharedCfg2, "include.path", sharedCfg1)
 	assert.Nil(cmd.Run())
 
-	_, err = Load(sharedCfg1)
+	_, err = LoadFile(sharedCfg1)
 	assert.NotNil(err)
 	assert.True(strings.HasPrefix(err.Error(), "exceeded maximum include depth"))
 
@@ -403,7 +403,7 @@ func TestCircularInclude(t *testing.T) {
 	assert.Nil(cmd.Run())
 	cmd = exec.Command("git", "-C", workdir, "config", "include.path", sharedCfg1)
 	assert.Nil(cmd.Run())
-	_, err = Load(workdir)
+	_, err = LoadDir(workdir)
 	assert.True(strings.HasPrefix(err.Error(), "exceeded maximum include depth"))
 }
 
@@ -458,12 +458,12 @@ func TestAllConfig(t *testing.T) {
 	assert.Nil(exec.Command("git", "-C", workdir, "config", "test.key4", "repo 4").Run())
 	assert.Nil(exec.Command("git", "-C", workdir, "config", "test.key5", "repo 5").Run())
 
-	repoConfig, err := Load(workdir)
+	repoConfig, err := LoadDir(workdir)
 	assert.Nil(err)
 	assert.NotNil(repoConfig)
 
 	// Get all config
-	allConfig, err := LoadAll(workdir)
+	allConfig, err := LoadDirWithDefault(workdir)
 	assert.Nil(err)
 	assert.NotNil(allConfig)
 
@@ -546,7 +546,7 @@ func TestSaveConfig(t *testing.T) {
 	assert.Nil(exec.Command("git", "config", "-f", cfgFile, "ab.empty", "").Run())
 
 	// Load cfgFile
-	cfg, err := Load(cfgFile)
+	cfg, err := LoadFile(cfgFile)
 	assert.Nil(err)
 	assert.Equal("value has space ", cfg.Get("ab.cd"))
 	assert.Equal("value-1", cfg.Get("ab.CD.ef"))
@@ -560,7 +560,7 @@ func TestSaveConfig(t *testing.T) {
 	assert.Nil(err)
 
 	// Load new file
-	newCfg, err := Load(newCfgFile)
+	newCfg, err := LoadFile(newCfgFile)
 	assert.Nil(err)
 	assert.Equal(cfg, newCfg)
 	assert.Equal("value-1", newCfg.Get("ab.CD.ef"))

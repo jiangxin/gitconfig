@@ -28,7 +28,7 @@ func TestCacheSet(t *testing.T) {
 	fn := cacheTestSpace.GetPath("config.test")
 	fi, err := os.Stat(fn)
 	if assert.Nil(t, err) {
-		cfg, err := loadConfigFile(fn)
+		cfg, err := LoadFile(fn)
 		if assert.Nil(t, err) {
 			CacheSet(fn, cfg, fi.Size(), fi.ModTime())
 		}
@@ -75,7 +75,7 @@ func TestCacheSetAgain(t *testing.T) {
 	fn := cacheTestSpace.GetPath("config.test")
 	fi, err := os.Stat(fn)
 	if assert.Nil(t, err) {
-		cfg, err := loadConfigFile(fn)
+		cfg, err := LoadFile(fn)
 		if assert.Nil(t, err) {
 			CacheSet(fn, cfg, fi.Size(), fi.ModTime())
 		}

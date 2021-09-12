@@ -53,11 +53,11 @@ func FindRepository(dir string) (*Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	gitConfig, err = loadConfigFile(filepath.Join(commonDir, "config"))
+	gitConfig, err = LoadFileWithDefault(filepath.Join(commonDir, "config"))
 	if err != nil {
 		return nil, err
 	}
-	if !gitConfig.GetBool("core.bare", true) {
+	if !gitConfig.GetBool("core.bare", false) {
 		workDir, _ = getWorkTree(gitDir)
 	}
 	return &Repository{

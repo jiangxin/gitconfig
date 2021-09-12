@@ -176,9 +176,9 @@ func main() {
 	}
 
 	if optInclude {
-		cfg, err = gitconfig.LoadAll(configFile)
+		cfg, err = gitconfig.LoadFileWithDefault(configFile)
 	} else {
-		cfg, err = gitconfig.Load(configFile)
+		cfg, err = gitconfig.LoadFile(configFile)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)

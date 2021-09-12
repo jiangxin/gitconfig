@@ -5,14 +5,17 @@ import (
 	"os"
 )
 
-// loadConfigFile loads specific git config file
-func loadConfigFile(name string) (GitConfig, error) {
+// LoadFile loads specific git config file.
+func LoadFile(name string) (GitConfig, error) {
 	if cfg, ok := CacheGet(name); ok {
 		return cfg, nil
 	}
 
 	// cache will be updated using this time
-	fi, _ := os.Stat(name)
+	fi, err := os.Stat(name)
+	if err != nil {
+		return nil, ErrNotExist
+	}
 
 	buf, err := ioutil.ReadFile(name)
 	if err != nil {
@@ -29,52 +32,47 @@ func loadConfigFile(name string) (GitConfig, error) {
 	return cfg, nil
 }
 
-// Load only loads one file or config of current repository
-func Load(name string) (GitConfig, error) {
-	var (
-		err    error
-		fi     os.FileInfo
-		search bool
-	)
-
-	if name == "" {
-		search = true
-		name, err = os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		fi, err = os.Stat(name)
-		if err != nil {
-			return nil, ErrNotExist
-		}
-		if fi.IsDir() {
-			search = true
-		}
-	}
-
-	if search {
-		name, err = FindGitConfig(name)
-		if err != nil {
-			if err == ErrNotInGitDir {
-				return nil, nil
-			}
-			return nil, err
-		}
-	}
-
-	return loadConfigFile(name)
-}
-
-// LoadAll will load additional global and system config files
-func LoadAll(name string) (GitConfig, error) {
+// LoadFileWithDefault loads specific git config file and fallback
+// to default config (user level config or system level).
+func LoadFileWithDefault(name string) (GitConfig, error) {
 	cfg := DefaultConfig()
 
-	repoConfig, err := Load(name)
-	if err != nil {
-		return nil, err
+	repoConfig, err := LoadFile(name)
+	if err == nil {
+		cfg.Merge(repoConfig, ScopeSelf)
 	}
-	cfg.Merge(repoConfig, ScopeSelf)
+	return cfg, nil
+}
+
+// LoadDir only loads git config file found in gitdir.
+func LoadDir(dir string) (GitConfig, error) {
+	var (
+		err error
+	)
+
+	if dir == "" {
+		dir, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+	}
+	configFile, err := FindGitConfig(dir)
+	if err != nil {
+		return nil, ErrNotExist
+	}
+
+	return LoadFile(configFile)
+}
+
+// LoadDirWithDefault loads git config file found in gitdir, and
+// fallback to default (global and system level git config).
+func LoadDirWithDefault(dir string) (GitConfig, error) {
+	cfg := DefaultConfig()
+
+	repoConfig, err := LoadDir(dir)
+	if err == nil {
+		cfg.Merge(repoConfig, ScopeSelf)
+	}
 	return cfg, nil
 }
 
@@ -88,20 +86,20 @@ func SystemConfig() (GitConfig, error) {
 	if _, err := os.Stat(file); err != nil {
 		return nil, nil
 	}
-	return Load(file)
+	return LoadFile(file)
 }
 
 // GlobalConfig returns global user config, reload if necessary
 func GlobalConfig() (GitConfig, error) {
 	file, err := GlobalConfigFile()
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	if _, err := os.Stat(file); err != nil {
 		return nil, nil
 	}
-	return Load(file)
+	return LoadFile(file)
 }
 
 // DefaultConfig returns global and system wide config
