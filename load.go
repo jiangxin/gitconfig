@@ -68,35 +68,13 @@ func Load(name string) (GitConfig, error) {
 
 // LoadAll will load additional global and system config files
 func LoadAll(name string) (GitConfig, error) {
-	cfg := NewGitConfig()
-
-	sysConfig, err := SystemConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	globalConfig, err := GlobalConfig()
-	if err != nil {
-		return nil, err
-	}
+	cfg := DefaultConfig()
 
 	repoConfig, err := Load(name)
 	if err != nil {
 		return nil, err
 	}
-
-	if sysConfig != nil {
-		cfg.Merge(sysConfig, ScopeSystem)
-	}
-
-	if globalConfig != nil {
-		cfg.Merge(globalConfig, ScopeGlobal)
-	}
-
-	if repoConfig != nil {
-		cfg.Merge(repoConfig, ScopeSelf)
-	}
-
+	cfg.Merge(repoConfig, ScopeSelf)
 	return cfg, nil
 }
 
