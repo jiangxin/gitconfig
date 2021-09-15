@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jiangxin/goconfig"
+	"github.com/jiangxin/gitconfig/goconfig"
 )
 
 // GitConfig maps section to key-value pairs
